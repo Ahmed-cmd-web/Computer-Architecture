@@ -14,8 +14,8 @@ int R1;
 int R2AddressImmediate;
 int instruction=0;
 int GPRS[64];
-int SREG;
-
+short int SREG;
+int negative = 0;
 
 void printBinary(int num) {
     for (int i = sizeof(short int) * 8 - 1; i >= 0; i--) {
@@ -57,18 +57,53 @@ void convertAssemblyToMachineCode()
         for (; opcode < 12; opcode++)
             if(strcasecmp(operation,operations[opcode])==0)
                 break;
+        // printf("opcode: %d\n",opcode);
         opcode <<=12;
+        // printf("opcode2: %d\n",opcode);
+
         instruction |= opcode;
+        // printf("Instruction %d\n", i);
+        // printf("%d\n", instructions[i]);
+        // printBinary(instructions[i]);
         char* regNum=&firstReg[1];
         instruction |= (atoi(regNum)<<6);
-        if (secondArg[0]!='R')
-            instruction |= atoi(secondArg);
-        else
+        printf("second arg >>%s\n", secondArg);
+        if (secondArg[0]=='R')
         {
+            // printf("Instruction %d\n", instruction);
+            //  printf("%d\n", instructions[i]);
             regNum=&secondArg[1];
             instruction |= atoi(regNum);
-        }
+            //     printf("Instruction After %d\n", instruction);
+            // printBinary(instruction);
+            }
+        else{
+            // printf("Instruction After2 %d\n", instruction);
+            // printBinary(instruction);
+            // printf("secondArg %d\n", atoi(secondArg));
+            // printBinary(atoi(secondArg));
+            int temp=atoi(secondArg);
+            // unsigned int temp2=temp;
+            if (temp<0){
+                negative=1;
+                temp=(~temp)+1;
+            }
+            else
+                negative=0;
+
+            temp&=0x003F;
+            instruction |= temp;
+            // printf("Instruction After3 %d\n", instruction);
+            // printBinary(instruction);
+
+            }
+
+        // printf("Instruction %d\n", instruction);
+        // printf("%d\n", instructions[i]);
+        // printBinary(instruction);
+
         instructions[i] = instruction;
+
 }
 }
 void fetch()
@@ -84,9 +119,20 @@ void decode()
     R1= (instruction >> 6) & 63;
     R2AddressImmediate = instruction & 63;
 
+    // if (negative){
+    // printf("R2AddressImmediate:>>> %d\n", R2AddressImmediate);
+    //  printBinary(R2AddressImmediate);
+    //     R2AddressImmediate= (~R2AddressImmediate)+1;
+    // printf("R2AddressImmediate:>>> %d\n", R2AddressImmediate);
+    // printBinary(R2AddressImmediate);
+
+    //     }
+
+
+
     // Sign extend the immediate value
-    if (R2AddressImmediate&(1<<6))
-        R2AddressImmediate |= 0xFFC0;
+    // if (R2AddressImmediate&(1<<6))
+    //     R2AddressImmediate |= 0xFFC0;
 
 }
 
@@ -128,45 +174,55 @@ void evalFlags(int op1,int op2,int res){
 
 void execute()
 {
-
     switch (opcode)
     {
     case 0: // add
         GPRS[R1] = GPRS[R1] + GPRS[R2AddressImmediate];   // R1=R1+R2
-        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        evalFlags(GPRS[R1],GPRS[R2AddressImmediate],GPRS[R1]);
         break;
     case 1: // sub
         GPRS[R1] = GPRS[R1] - GPRS[R2AddressImmediate];   // R1=R1-R2
-        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        evalFlags(GPRS[R1], GPRS[R2AddressImmediate], GPRS[R1]);
         break;
     case 2: // MUL
         GPRS[R1] = GPRS[R1] * GPRS[R2AddressImmediate];   // R1=R1*R2
-        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        evalFlags(GPRS[R1],  GPRS[R2AddressImmediate],GPRS[R1]);
         break;
     case 3: // MOVI
-        GPRS[R1] = R2AddressImmediate;   // R1=immediate
+        if (negative)
+            R2AddressImmediate = -R2AddressImmediate;
+        printf("MOVI %d\n", R2AddressImmediate);
+        GPRS[R1] = R2AddressImmediate; // R1=immediate
         break;
     case 4: // BEQZ
+        if (negative)
+            R2AddressImmediate = -R2AddressImmediate;
         if (GPRS[R1] == 0)
             pc +=1+ R2AddressImmediate;
         break;
     case 5: // ANDI
-        GPRS[R1] = GPRS[R1] & R2AddressImmediate;   // R1=R1&R2
-        evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
+        if (negative)
+            R2AddressImmediate = -R2AddressImmediate;
+        GPRS[R1] = GPRS[R1] & R2AddressImmediate;   // R1=R1&IMM
+        evalFlags(GPRS[R1],  R2AddressImmediate,GPRS[R1]);
         break;
     case 6: // EOR
         GPRS[R1] = GPRS[R1] ^ GPRS[R2AddressImmediate];   // R1=R1^R2
-        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        evalFlags(GPRS[R1], GPRS[R2AddressImmediate],GPRS[R1]);
         break;
     case 7: // BR
         GPRS[R1] <<= 6;
         pc = GPRS[R1] | GPRS[R2AddressImmediate];   // pc=R1 || R2
         break;
     case 8: // SAL
+        if (negative)
+            R2AddressImmediate = -R2AddressImmediate;
         GPRS[R1] = GPRS[R1] << R2AddressImmediate;   // R1=R1<<IMM
         evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
         break;
     case 9: // SAR
+        if (negative)
+            R2AddressImmediate = -R2AddressImmediate;
         GPRS[R1] = GPRS[R1] >> R2AddressImmediate;   // R1=R1>>IMM
         evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
         break;
@@ -188,7 +244,7 @@ int main()
 
     convertAssemblyToMachineCode();
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
     {
         fetch();
         decode();
@@ -198,6 +254,11 @@ int main()
         printf("Opcode: %d\n", opcode);
         printf("R1: %d\n", R1);
         printf("R2AddressImmediate: %d\n", R2AddressImmediate);
+        execute();
+        printf("GPRS[R%d]: %d\n",R1, GPRS[R1]);
+        printf("GPRS[R%d]: %d\n",R2AddressImmediate, GPRS[R2AddressImmediate]);
+        printf("SREG: ");
+        printBinary(SREG);
     }
 
 
