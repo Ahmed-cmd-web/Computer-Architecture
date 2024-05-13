@@ -13,6 +13,9 @@ int opcode;
 int R1;
 int R2AddressImmediate;
 int instruction=0;
+int GPRS[64];
+int SREG;
+
 
 void printBinary(int num) {
     for (int i = sizeof(short int) * 8 - 1; i >= 0; i--) {
@@ -81,73 +84,102 @@ void decode()
     R1= (instruction >> 6) & 63;
     R2AddressImmediate = instruction & 63;
 
+    // Sign extend the immediate value
+    if (R2AddressImmediate&(1<<6))
+        R2AddressImmediate |= 0xFFC0;
+
 }
 
+void evalFlags(int op1,int op2,int res){
+    // Zero flag
+    if (res==0)
+        SREG |= 1;
+    else
+        SREG &= ~(1);
+
+    // Negative flag
+    if (res<0)
+        SREG |= 1<<2;
+    else
+        SREG &= ~(1<<2);
 
 
-// void execute()
-// {
-//     int instruction = instructions[pc];
-//     int opcode = instruction >> 24;
-//     int operand1 = (instruction >> 16) & 0xFF;
-//     int operand2 = (instruction >> 8) & 0xFF;
-//     int operand3 = instruction & 0xFF;
+    // Overflow flag
+    if ((op1>0 && op2>0 && res<0) || (op1<0 && op2<0 && res>0))
+        SREG |= 1<<3;
+    else
+        SREG &= ~(1<<3);
 
-//     switch (opcode)
-//     {
-//     case 0:
-//         data[operand1] = data[operand2] + data[operand3];
-//         break;
-//     case 1:
-//         data[operand1] = data[operand2] - data[operand3];
-//         break;
-//     case 2:
-//         data[operand1] = data[operand2] * data[operand3];
-//         break;
-//     case 3:
-//         data[operand1] = data[operand2] / data[operand3];
-//         break;
-//     case 4:
-//         data[operand1] = data[operand2] % data[operand3];
-//         break;
-//     case 5:
-//         data[operand1] = data[operand2] & data[operand3];
-//         break;
-//     case 6:
-//         data[operand1] = data[operand2] | data[operand3];
-//         break;
-//     case 7:
-//         data[operand1] = data[operand2] ^ data[operand3];
-//         break;
-//     case 8:
-//         data[operand1] = data[operand2] << data[operand3];
-//         break;
-//     case 9:
-//         data[operand1] = data[operand2] >> data[operand3];
-//         break;
-//     case 10:
-//         data[operand1] = data[operand2] == data[operand3];
-//         break;
-//     case 11:
-//         data[operand1] = data[operand2] != data[operand3];
-//         break;
-//     case 12:
-//         data[operand1] = data[operand2] < data[operand3];
-//         break;
-//     case 13:
-//         data[operand1] = data[operand2] <= data[operand3];
-//         break;
-//     case 14:
-//         data[operand1] = data[operand2] > data[operand3];
-//         break;
-//     case 15:
-//         data[operand1] = data[operand2] >= data[operand3];
-//         break;
-//     case 16:
-//         data[operand1] = data[ operand2];
-//         break;
-//     }
-// }
+    // Carry flag
+    if (res & 1<<8)
+        SREG |= 1<<4;
+    else
+        SREG &= ~(1<<4);
+
+    // Sign Flag
+    int N=SREG & (1<<2);
+    int V=SREG & (1<<3);
+    if (N^V)
+        SREG |= 1<<1;
+    else
+        SREG &= ~(1<<1);
+
+}
+
+void execute()
+{
+
+    switch (opcode)
+    {
+    case 0: // add
+        GPRS[R1] = GPRS[R1] + GPRS[R2AddressImmediate];   // R1=R1+R2
+        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        break;
+    case 1: // sub
+        GPRS[R1] = GPRS[R1] - GPRS[R2AddressImmediate];   // R1=R1-R2
+        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        break;
+    case 2: // MUL
+        GPRS[R1] = GPRS[R1] * GPRS[R2AddressImmediate];   // R1=R1*R2
+        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        break;
+    case 3: // MOVI
+        GPRS[R1] = R2AddressImmediate;   // R1=immediate
+        break;
+    case 4: // BEQZ
+        if (GPRS[R1] == 0)
+            pc +=1+ R2AddressImmediate;
+        break;
+    case 5: // ANDI
+        GPRS[R1] = GPRS[R1] & R2AddressImmediate;   // R1=R1&R2
+        evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
+        break;
+    case 6: // EOR
+        GPRS[R1] = GPRS[R1] ^ GPRS[R2AddressImmediate];   // R1=R1^R2
+        evalFlags(GPRS[R1], GPRS[R1], GPRS[R2AddressImmediate]);
+        break;
+    case 7: // BR
+        GPRS[R1] <<= 6;
+        pc = GPRS[R1] | GPRS[R2AddressImmediate];   // pc=R1 || R2
+        break;
+    case 8: // SAL
+        GPRS[R1] = GPRS[R1] << R2AddressImmediate;   // R1=R1<<IMM
+        evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
+        break;
+    case 9: // SAR
+        GPRS[R1] = GPRS[R1] >> R2AddressImmediate;   // R1=R1>>IMM
+        evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
+        break;
+    case 10: // LDR
+        GPRS[R1] = data[R2AddressImmediate];   // R1=MEM[R2]
+        break;
+    case 11: // STR
+        data[R2AddressImmediate] = GPRS[R1];   // MEM[R2]=R1
+        break;
+    default:
+        break;
+    }
+}
 
 
 
