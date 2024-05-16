@@ -16,9 +16,9 @@ void printBinary(int num) {
 
 int main()
 {
-    printBinary(~(-5)+1);
-    Negative = 1;
-    
+    int instruction=-20393;
+    printf("opcode: %d\n",(instruction >> 12) & 0x000F);
+
     return 0;
 }
 
