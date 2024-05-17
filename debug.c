@@ -16,8 +16,9 @@ void printBinary(int num) {
 
 int main()
 {
-    int instruction=-20393;
-    printf("opcode: %d\n",(instruction >> 12) & 0x000F);
+   printf("%d\n",sizeof(short int) * 8);
+   printf("\n");
+   printf("%d\n",sizeof(int) * 8);
 
     return 0;
 }

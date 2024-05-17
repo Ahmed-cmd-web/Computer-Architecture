@@ -3,20 +3,18 @@
 #include <string.h>
 #include <ctype.h>
 
-
 int numberOfInstructions=0;
 char lines[1024][100];
-int instructions[1024];
+short int instructions[1024];
 int sign[1024];
-int data[2048];
-int pc = 0;
-int opcode;
-int R1;
-int R2AddressImmediate;
-int instruction=0;
-int GPRS[64];
-short int SREG;
-int negative = 0;
+char data[2048];
+char pc = 0;
+char opcode;
+char R1;
+char R2AddressImmediate;
+short int instruction=0;
+char GPRS[64];
+char SREG;
 
 void printBinary(int num) {
     for (int i = sizeof(short int) * 8 - 1; i >= 0; i--) {
@@ -91,14 +89,6 @@ void fetch()
 
 void decode()
 {
-
-    // printf("============================");
-    // printf("Instruction2:\n");
-    // printBinary(instruction);
-    // printf("Opcode2>>>>: %d\n", (instruction >> 12));
-    // printf("============================");
-    // if (instruction<0)
-    //     instruction = -instruction;
     opcode = (instruction >> 12) & 0x000F;
     R1= (instruction >> 6) & 63;
     R2AddressImmediate = instruction & 63;
@@ -181,7 +171,6 @@ void execute()
         evalFlags(GPRS[R1], GPRS[R2AddressImmediate],GPRS[R1]);
         break;
     case 7: // BR
-        GPRS[R1] <<= 6;
         pc = GPRS[R1] | GPRS[R2AddressImmediate];   // pc=R1 || R2
         break;
     case 8: // SAL
@@ -191,7 +180,7 @@ void execute()
         evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
         break;
     case 9: // SAR
-        if (negative)
+        if (sign[pc-1])
             R2AddressImmediate = -R2AddressImmediate;
         GPRS[R1] = GPRS[R1] >> R2AddressImmediate;   // R1=R1>>IMM
         evalFlags(GPRS[R1], GPRS[R1], R2AddressImmediate);
@@ -200,8 +189,6 @@ void execute()
         GPRS[R1] = data[R2AddressImmediate];   // R1=MEM[R2]
         break;
     case 11: // STR
-        // if (sign[pc-1])
-        //     R2AddressImmediate = -R2AddressImmediate;
         data[R2AddressImmediate] = GPRS[R1];   // MEM[R2]=R1
         break;
     default:
@@ -220,19 +207,46 @@ int main()
     {
         fetch();
         decode();
-        printf("Instruction %d\n", i);
-        printf("pc = %d\n", pc);
+        // printf("Instruction %d\n", i);
+        // printf("pc = %d\n", pc);
         printf("%d\n", instructions[i]);
         printBinary(instructions[i]);
-        printf("Opcode: %d\n", opcode);
-        printf("R1: %d\n", R1);
-        printf("R2AddressImmediate: %d\n", R2AddressImmediate);
-        execute();
-        printf("GPRS[R%d]: %d\n",R1, GPRS[R1]);
-        printf("GPRS[R%d]: %d\n",R2AddressImmediate, GPRS[R2AddressImmediate]);
+        // printf("Opcode: %d\n", opcode);
+        // printf("R1: %d\n", R1);
+        // printf("R2AddressImmediate: %d\n", R2AddressImmediate);
+        // execute();
+        // printf("GPRS[R%d]: %d\n",R1, GPRS[R1]);
+        // printf("GPRS[R%d]: %d\n",R2AddressImmediate, GPRS[R2AddressImmediate]);
         printf("SREG: \n");
         printBinary(SREG);
     }
+
+    // int clockCycles = 3 + (numberOfInstructions - 1) * 1;
+    // for (int i = 1; i <= clockCycles; i++)
+    // {
+    //     printf("Clock cycle %d\n", i);
+    //     // printf("fetching Instruction %d\n", i);
+    //     if (i>=3){
+    //         printf("executing Instruction %d\n", i-2);
+    //         if (i-1<=numberOfInstructions)
+    //             printf("decoding Instruction %d\n", i-1);
+    //         if (i<=numberOfInstructions)
+    //             printf("fetching Instruction %d\n", i);
+
+    //     }
+    //     else if (i>=2){
+    //         printf("decoding Instruction %d\n", i-1);
+    //         printf("fetching Instruction %d\n", i);
+    //     }
+    //     else
+    //         printf("fetching Instruction %d\n", i);
+
+
+        // fetch();
+        // decode();
+        // execute();
+    // }
+
 
     return 0;
 }
