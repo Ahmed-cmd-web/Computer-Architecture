@@ -6,9 +6,9 @@
 int numberOfInstructions=0;
 char lines[1024][100];
 short int instructions[1024];
-int sign[1024];
+char sign[1024];
 char data[2048];
-char pc = 0;
+short int pc = 0;
 char opcode;
 char R1;
 char R2AddressImmediate;
